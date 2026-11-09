@@ -74,8 +74,6 @@ I wrote about each one separately
 
 This edition puts them together, shows how they nest, maps them onto  ****Claude Code**** , ****Codex**** and  ****Grok Bot**** , and builds one agent through all three
 
-> I publish practical breakdowns of AI agents, workflows, and production systems on Substack [****Join the newsletter here****](https://whrrari.substack.com/subscribe?next=https%3A%2F%2Fsubstack.com%2F%40whrrari%2Fnotes&utm_source=profile-page&utm_medium=web&utm_campaign=substack_profile&just_signed_up=true)
-
 ---
 
 ## Contents
