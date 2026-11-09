@@ -26,24 +26,23 @@ The design follows three complementary responsibilities: the **harness** defines
 
 Throughout this document, **target** means proposed behavior or an interface to implement; **decision** means a recommended design choice subject to evaluation; **implementation evidence** means repository code, tests, deployed configuration, or operational records that must be inspected before any capability is called implemented. No production-readiness claim is made here.
 
-### 1.4 C4 context (target)
+### 1.4 C4 context view (target; Mermaid 8.8 compatible)
 
 ```mermaid
-C4Context
-  title Agent Runtime Platform — context (target)
-  Person(user, "Requester", "Submits work and receives results")
-  Person(approver, "Approver / operator", "Reviews gated actions and escalations")
-  System(arp, "Agent Runtime Platform", "Runs bounded, observable agent workflows")
-  System_Ext(identity, "Identity provider", "Authenticates users and service principals")
-  System_Ext(models, "Model providers", "Inference APIs")
-  System_Ext(domain, "Domain systems", "Systems of record exposed through scoped tools")
-  System_Ext(ops, "Operations and security", "Monitoring, incident response, policy")
-  Rel(user, arp, "Submit tasks, inspect authorized run status")
-  Rel(approver, arp, "Approve, reject, cancel, or resume")
-  Rel(arp, identity, "Authenticate and resolve claims")
-  Rel(arp, models, "Send minimized prompts and structured requests")
-  Rel(arp, domain, "Perform policy-authorized operations through tools")
-  Rel(arp, ops, "Emit metrics, traces, audit events, and alerts")
+graph LR
+  USER["Requester"]
+  APPROVER["Approver / operator"]
+  ARP["Agent Runtime Platform<br/>Bounded, observable agent workflows"]
+  IDENTITY["Identity provider<br/>Users and service principals"]
+  MODELS["Model providers<br/>Inference APIs"]
+  DOMAIN["Domain systems<br/>Scoped tools"]
+  OPS["Operations and security<br/>Monitoring, incident response, policy"]
+  USER -->|"Submit tasks; inspect authorized status"| ARP
+  APPROVER -->|"Approve, reject, cancel, resume"| ARP
+  ARP -->|"Authenticate and resolve claims"| IDENTITY
+  ARP -->|"Send minimized prompts and structured requests"| MODELS
+  ARP -->|"Policy-authorized operations"| DOMAIN
+  ARP -->|"Metrics, traces, audit events, alerts"| OPS
 ```
 
 ## 2. Requirements
@@ -184,37 +183,36 @@ The runtime receives an authenticated task contract, resolves an immutable workf
 - **Verifier:** independent deterministic checks first, then calibrated semantic evaluation where needed.
 - **Human:** decisions outside delegated authority, ambiguous cases, and high-impact approvals.
 
-### 3.2 C4 containers (target)
+### 3.2 C4 container view (target; Mermaid 8.8 compatible)
 
 ```mermaid
-C4Container
-  title Agent Runtime Platform — containers (target)
-  Person(user, "Requester")
-  System_Boundary(arp, "Agent Runtime Platform") {
-    Container(api, "API / Admission", "HTTPS service", "Authn, contract validation, quota, run IDs")
-    Container(orchestrator, "Workflow Orchestrator", "Durable workflow / application service", "Graph state, routes, joins, approval pauses")
-    Container(workers, "Isolated Workers", "Containers / jobs", "Model calls, loop execution, browser and data tools")
-    Container(gateway, "Tool Gateway", "Internal API", "Tool registry, authorization, schema, rate limits")
-    ContainerDb(pg, "PostgreSQL", "Relational database", "Runs, checkpoints, definitions, approvals, audit metadata")
-    ContainerDb(redis, "Redis", "Cache / ephemeral coordination", "Leases, short-lived cache, rate limits; not source of truth")
-    ContainerDb(qdrant, "Qdrant", "Vector database", "Tenant-filtered embedding index for approved knowledge")
-    Container(queue, "Durable Queue", "Message broker", "Work dispatch, delayed retry, dead-letter")
-    Container(telemetry, "Telemetry Pipeline", "OTel-compatible", "Metrics, traces, sanitized logs")
-  }
-  System_Ext(provider, "Model Providers")
-  System_Ext(systems, "Approved domain systems")
-  Rel(user, api, "Submit and inspect runs")
-  Rel(api, orchestrator, "Create run / query status")
-  Rel(orchestrator, pg, "Persist state and versions")
-  Rel(orchestrator, queue, "Dispatch work")
-  Rel(queue, workers, "Deliver at least once")
-  Rel(workers, provider, "Inference")
-  Rel(workers, gateway, "Typed capability calls")
-  Rel(gateway, systems, "Authorized domain operation")
-  Rel(workers, qdrant, "Scoped retrieval")
-  Rel(api, redis, "Short-lived limits / cache")
-  Rel(orchestrator, telemetry, "Emit events and spans")
-  Rel(workers, telemetry, "Emit events and spans")
+graph TB
+  USER["Requester"]
+  subgraph ARP
+    API["API / Admission<br/>HTTPS service; auth, validation, quota"]
+    ORCHESTRATOR["Workflow Orchestrator<br/>Graph state, routes, joins, approvals"]
+    WORKERS["Isolated Workers<br/>Model calls, loops, browser and data tools"]
+    GATEWAY["Tool Gateway<br/>Registry, authorization, schemas, rate limits"]
+    POSTGRES[("PostgreSQL<br/>Runs, checkpoints, approvals, audit metadata")]
+    REDIS[("Redis<br/>Ephemeral cache, leases, rate limits")]
+    QDRANT[("Qdrant<br/>Tenant-filtered knowledge index")]
+    QUEUE[["Durable Queue<br/>Dispatch, delayed retry, dead-letter"]]
+    TELEMETRY["Telemetry Pipeline<br/>Metrics, traces, sanitized logs"]
+  end
+  PROVIDER["Model Providers"]
+  SYSTEMS["Approved domain systems"]
+  USER -->|"Submit and inspect runs"| API
+  API -->|"Create run; query status"| ORCHESTRATOR
+  ORCHESTRATOR -->|"Persist state and versions"| POSTGRES
+  ORCHESTRATOR -->|"Dispatch work"| QUEUE
+  QUEUE -->|"At-least-once delivery"| WORKERS
+  WORKERS -->|"Inference"| PROVIDER
+  WORKERS -->|"Typed capability calls"| GATEWAY
+  GATEWAY -->|"Authorized operations"| SYSTEMS
+  WORKERS -->|"Scoped retrieval"| QDRANT
+  API -->|"Short-lived limits and cache"| REDIS
+  ORCHESTRATOR -->|"Events and spans"| TELEMETRY
+  WORKERS -->|"Events and spans"| TELEMETRY
 ```
 
 The durable queue product and workflow engine are deployment decisions. Redis is not authoritative for run state, approval decisions, or audit history.
@@ -225,36 +223,36 @@ The harness assembles the smallest useful input, including task contract, author
 
 Target control surfaces include per-tenant quotas, per-run budgets, policy and tool registries, secrets brokerage, provider routing, prompt and artifact versioning, data classification, approvals, and observability. Custom application logic may extend these contracts, but may not grant itself broader privilege at runtime.
 
-### 3.4 C4 components: orchestration service (target)
+### 3.4 C4 component view: orchestration service (target; Mermaid 8.8 compatible)
 
 ```mermaid
-C4Component
-  title Orchestration service — components (target)
-  Container_Boundary(orchestrator, "Workflow Orchestrator") {
-    Component(admission, "Run Admission", "Service", "Validates contract, identity, limits")
-    Component(resolver, "Definition Resolver", "Service", "Loads immutable workflow/policy versions")
-    Component(scheduler, "Graph Scheduler", "Service", "Ready nodes, routes, fan-out, joins")
-    Component(loop, "Loop Controller", "Library", "Attempts, feedback, stop conditions")
-    Component(policy, "Policy Decision Point", "Service", "Authorizes transitions, tools, approval needs")
-    Component(checkpoint, "Checkpoint Manager", "Repository", "Versioned state, leases, replay safety")
-    Component(approval, "Approval Coordinator", "Service", "Durable pause, bind decision to action hash")
-    Component(verifier, "Verification Coordinator", "Service", "Collects independent evidence")
-    Component(events, "Event / Audit Publisher", "Service", "Correlated state and audit events")
-  }
-  Rel(admission, resolver, "Resolve task definition")
-  Rel(admission, policy, "Authorize admission")
-  Rel(scheduler, loop, "Run node loop")
-  Rel(scheduler, policy, "Check route and effect policy")
-  Rel(scheduler, checkpoint, "Load / persist state")
-  Rel(scheduler, approval, "Pause for approval")
-  Rel(scheduler, verifier, "Evaluate completion criteria")
-  Rel(checkpoint, events, "Publish transition")
+graph TB
+  ADMISSION["Run Admission<br/>Validate contract, identity, limits"]
+  RESOLVER["Definition Resolver<br/>Load immutable workflow and policy versions"]
+  SCHEDULER["Graph Scheduler<br/>Ready nodes, routes, fan-out, joins"]
+  LOOP["Loop Controller<br/>Attempts, feedback, stop conditions"]
+  POLICY["Policy Decision Point<br/>Authorize transitions, tools, approvals"]
+  CHECKPOINT["Checkpoint Manager<br/>Versioned state, leases, replay safety"]
+  APPROVAL["Approval Coordinator<br/>Durable pause; bind decision to action"]
+  VERIFIER["Verification Coordinator<br/>Collect independent evidence"]
+  EVENTS["Event and Audit Publisher<br/>Correlated state and audit events"]
+  ADMISSION -->|"Resolve task definition"| RESOLVER
+  ADMISSION -->|"Authorize admission"| POLICY
+  RESOLVER -->|"Load graph definition"| SCHEDULER
+  SCHEDULER -->|"Run node loop"| LOOP
+  SCHEDULER -->|"Check route and effect policy"| POLICY
+  SCHEDULER -->|"Load and persist state"| CHECKPOINT
+  SCHEDULER -->|"Pause for approval"| APPROVAL
+  SCHEDULER -->|"Evaluate completion criteria"| VERIFIER
+  CHECKPOINT -->|"Publish transition"| EVENTS
+  APPROVAL -->|"Resume or reject"| SCHEDULER
+  VERIFIER -->|"Evidence and verdict"| SCHEDULER
 ```
 
 ### 3.5 Deployment view (target)
 
 ```mermaid
-flowchart TB
+graph TB
   subgraph Edge["Public / private ingress"]
     WAF["WAF / API gateway"]
     API["Admission and status API"]
@@ -290,45 +288,44 @@ flowchart TB
 
 Production deployment, network boundaries, failover, key management, and disaster recovery remain to be designed and verified for the selected hosting environment.
 
-### 3.6 Submission-to-completion sequence (target)
+### 3.6 Submission-to-completion sequence (target; Mermaid 8.8 compatible)
 
 ```mermaid
 sequenceDiagram
-  autonumber
-  actor U as Requester
-  participant API as Admission API
-  participant P as Policy / Identity
+  participant U as Requester
+  participant API as Admission_API
+  participant P as Policy_Identity
   participant DB as PostgreSQL
-  participant Q as Durable Queue
+  participant Q as Durable_Queue
   participant O as Orchestrator
-  participant W as Isolated Worker
-  participant M as Model Provider
-  participant T as Tool Gateway
+  participant W as Isolated_Worker
+  participant M as Model_Provider
+  participant T as Tool_Gateway
   participant V as Verifier
-  U->>API: POST /v1/runs + contract
-  API->>P: authenticate, authorize, clamp budget
-  P-->>API: trusted principal and decision
-  API->>DB: persist run + outbox transaction
-  API-->>U: 202 run_id, status_url
-  DB-->>Q: outbox dispatcher publishes run event
-  Q->>O: deliver at least once
-  O->>DB: claim lease, load versioned checkpoint
-  O->>W: dispatch node with scoped context
-  W->>M: structured request
-  M-->>W: candidate proposal
-  W->>T: validated tool request
-  T-->>W: authorized result / safe error
-  W->>V: artifact and independent check request
-  V-->>W: evidence and verdict
-  W->>O: versioned node result
-  O->>DB: checkpoint, audit, outbox transition
-  O-->>U: authorized status/result becomes available
+  U->>API: Submit run contract
+  API->>P: Authenticate, authorize, clamp budget
+  P-->>API: Trusted principal and decision
+  API->>DB: Persist run and outbox transaction
+  API-->>U: 202 Accepted, run ID and status URL
+  DB-->>Q: Outbox dispatcher publishes run event
+  Q->>O: Deliver run event at least once
+  O->>DB: Claim lease and load checkpoint
+  O->>W: Dispatch node with scoped context
+  W->>M: Send structured request
+  M-->>W: Return candidate proposal
+  W->>T: Submit validated tool request
+  T-->>W: Return authorized result or safe error
+  W->>V: Submit artifact for independent check
+  V-->>W: Return evidence and verdict
+  W->>O: Return versioned node result
+  O->>DB: Persist checkpoint, audit, and outbox event
+  O-->>U: Make authorized status and result available
 ```
 
 ### 3.7 Data-flow and trust boundaries (target)
 
 ```mermaid
-flowchart LR
+graph LR
   subgraph Untrusted["Untrusted input boundary"]
     U["User request"]
     WEB["Web / issue / retrieved text"]
@@ -513,7 +510,7 @@ The scheduler owns ready-node selection, concurrency, fan-out, join semantics, l
 ### 5.2 Execution graph (target)
 
 ```mermaid
-flowchart LR
+graph LR
   A[Admission] --> B[Contract validation]
   B -->|invalid| X[Reject / clarify]
   B -->|valid| C[Resolve workflow + policy version]

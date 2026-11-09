@@ -48,7 +48,7 @@ The executable Python project:
 - `examples/local_demo.py` — runnable runtime and approval demonstration.
 - `infrastructure/docker/` — development Dockerfile, not a hardened production
   deployment.
-- `docs/BLUEPRINT.md` — the proposed system architecture and engineering
+- `docs/BLUEPRINT.md` [BLUEPRINT](./agent-runtime-platform/docs/BLUEPRINT.md) — the proposed system architecture and engineering
   requirements.
 - `pyproject.toml` — package metadata and Python dependencies.
 
